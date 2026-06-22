@@ -159,12 +159,17 @@ def run_once(token, chat_id):
 
     html = fetch_list_html()
     if html is None:
-        return
+        log.error("목록 페이지를 가져오지 못했습니다. (사이트 다운/차단 의심)")
+        return False
 
     posts = parse_posts(html)
     log.info("수집된 게시글 수: %s", len(posts))
     if not posts:
-        return
+        # 정상이라면 게시판엔 항상 글이 많다. 0개 = 셀렉터가 깨졌다는 강한 신호.
+        log.error(
+            "게시글을 0개 수집했습니다 — 어미새 사이트 구조 변경 가능성. 크롤러 점검 필요!"
+        )
+        return False
 
     newest_id = posts[0]["id"]
 
@@ -172,7 +177,7 @@ def run_once(token, chat_id):
     if not file_exists:
         log.info("최초 실행: 메시지 없이 최신 ID(%s)만 저장합니다.", newest_id)
         save_last_id(newest_id)
-        return
+        return True
 
     # 새 게시글(저장된 ID보다 큰 것)만, 오래된 순으로 전송
     new_posts = sorted(
@@ -180,7 +185,7 @@ def run_once(token, chat_id):
     )
     if not new_posts:
         log.info("새 게시글 없음")
-        return
+        return True
 
     log.info("새 게시글 %s개 발견", len(new_posts))
     # 오래된 글부터 전송하고, 성공한 가장 최신 글까지만 상태를 갱신한다.
@@ -202,6 +207,8 @@ def run_once(token, chat_id):
     if last_sent > last_id:
         save_last_id(last_sent)
 
+    return True
+
 
 def main():
     log.info("🦅 어미새 크롤링 봇 시작!")
@@ -215,9 +222,11 @@ def main():
         return
 
     # --once: 한 번만 크롤링하고 종료 (GitHub Actions 등 외부 스케줄러용)
+    # 이상 감지(0개 수집/접속 실패) 시 exit 1 → Actions 실행이 '실패'로 표시되어
+    # GitHub 실패 알림(이메일)을 받을 수 있다.
     if "--once" in sys.argv:
-        run_once(token, chat_id)
-        return
+        ok = run_once(token, chat_id)
+        sys.exit(0 if ok else 1)
 
     # 기본: 무한 루프 (로컬 상시 구동용)
     try:
