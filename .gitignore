@@ -1,8 +1,8 @@
 # 비밀키 (절대 커밋 금지)
 config.json
 
-# 상태 파일
-eomisae_last_id.json
+# 상태 파일(eomisae_last_id.json)은 GitHub Actions가 진행상황을 유지하도록
+# 일부러 커밋합니다. 따라서 ignore하지 않습니다.
 
 # 파이썬 가상환경 / 캐시
 venv/

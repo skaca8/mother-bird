@@ -8,6 +8,7 @@ import json
 import logging
 import os
 import re
+import sys
 import time
 
 import requests
@@ -201,6 +202,12 @@ def main():
         )
         return
 
+    # --once: 한 번만 크롤링하고 종료 (GitHub Actions 등 외부 스케줄러용)
+    if "--once" in sys.argv:
+        run_once(token, chat_id)
+        return
+
+    # 기본: 무한 루프 (로컬 상시 구동용)
     try:
         while True:
             run_once(token, chat_id)

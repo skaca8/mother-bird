@@ -1,0 +1,50 @@
+name: eomisae-crawler
+
+on:
+  schedule:
+    # GitHub Actions cron 최소 간격은 5분 (혼잡 시 더 지연될 수 있음)
+    - cron: "*/5 * * * *"
+  workflow_dispatch: {}  # Actions 탭에서 수동 실행 버튼
+
+# 마지막 처리 ID(eomisae_last_id.json)를 레포에 커밋하기 위한 권한
+permissions:
+  contents: write
+
+# 동시 실행 방지 (상태파일 커밋 충돌 방지)
+concurrency:
+  group: eomisae-crawler
+  cancel-in-progress: false
+
+jobs:
+  crawl:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run crawler (once)
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: python script.py --once
+
+      - name: Commit updated state
+        run: |
+          if [[ -n "$(git status --porcelain eomisae_last_id.json)" ]]; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add eomisae_last_id.json
+            git commit -m "chore: update last_id [skip ci]"
+            git push
+          else
+            echo "상태 변화 없음 — 커밋 생략"
+          fi
