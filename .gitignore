@@ -1,0 +1,13 @@
+# 비밀키 (절대 커밋 금지)
+config.json
+
+# 상태 파일
+eomisae_last_id.json
+
+# 파이썬 가상환경 / 캐시
+venv/
+__pycache__/
+*.pyc
+
+# macOS
+.DS_Store
