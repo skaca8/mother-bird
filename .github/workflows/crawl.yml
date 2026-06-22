@@ -1,10 +1,9 @@
 name: eomisae-crawler
 
 on:
-  schedule:
-    # GitHub Actions cron 최소 간격은 5분 (혼잡 시 더 지연될 수 있음)
-    - cron: "*/5 * * * *"
-  workflow_dispatch: {}  # Actions 탭에서 수동 실행 버튼
+  # 외부 스케줄러(cron-job.org)가 GitHub API로 이 워크플로우를 호출한다.
+  # GitHub 내장 schedule cron은 신뢰성이 낮아 사용하지 않음.
+  workflow_dispatch: {}
 
 # 마지막 처리 ID(eomisae_last_id.json)를 레포에 커밋하기 위한 권한
 permissions:
