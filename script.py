@@ -4,6 +4,7 @@
 마지막으로 처리한 게시글 번호는 상태 파일에 저장해 재실행 시 중복 알림을 막는다.
 """
 
+import html
 import json
 import logging
 import os
@@ -131,9 +132,12 @@ def parse_posts(html):
 # ─── 텔레그램 전송 ──────────────────────────────────────
 def send_to_telegram(token, chat_id, title, link):
     api_url = f"https://api.telegram.org/bot{token}/sendMessage"
+    # 제목/링크에 <, >, & 가 있으면 HTML 파싱이 깨지므로 이스케이프
+    safe_title = html.escape(title)
+    safe_link = html.escape(link, quote=True)
     payload = {
         "chat_id": chat_id,
-        "text": f'<a href="{link}">{title}</a>',
+        "text": f'<a href="{safe_link}">{safe_title}</a>',
         "parse_mode": "HTML",
         "disable_web_page_preview": False,
     }
@@ -179,6 +183,9 @@ def run_once(token, chat_id):
         return
 
     log.info("새 게시글 %s개 발견", len(new_posts))
+    # 오래된 글부터 전송하고, 성공한 가장 최신 글까지만 상태를 갱신한다.
+    # 전송에 실패하면 그 글부터 다음 실행에서 재시도하기 위해 중단한다.
+    last_sent = last_id
     for post in new_posts:
         ok = send_to_telegram(token, chat_id, post["title"], post["link"])
         log.info(
@@ -187,8 +194,13 @@ def run_once(token, chat_id):
             post["id"],
             post["title"],
         )
+        if not ok:
+            log.error("전송 실패 — 이 글부터 다음 실행에서 재시도합니다.")
+            break
+        last_sent = post["id"]
 
-    save_last_id(newest_id)
+    if last_sent > last_id:
+        save_last_id(last_sent)
 
 
 def main():
